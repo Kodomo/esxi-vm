@@ -34,9 +34,9 @@ def setup_config():
         PASSWORD="",
         KEY="",
 
-        #  Default number of vCPU's, GB Mem, & GB boot disk
+        #  Default number of vCPU's, MB Mem, & GB boot disk
         CPU=2,
-        MEM=4,
+        MEM=4096,
         HDISK=20,
 
         #  Default Disk format thin, zeroedthick, eagerzeroedthick
@@ -55,7 +55,7 @@ def setup_config():
         ISO="None",
 
         #  Default GuestOS type.  (See VMware documentation for all available options)
-        GUESTOS="centos-64",
+        GUESTOS="debian8-64",
 
         # Extra VMX options
         VMXOPTS=""

@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 import argparse                   # Argument parser
 
@@ -53,7 +53,7 @@ parser.add_argument("-P", "--Password", dest='PASSWORD', type=str, help="ESXi Ho
 parser.add_argument("-K", "--Key", dest='KEY', type=str, help="ESXi Host path to private key ({})".format(KEY))
 parser.add_argument("-n", "--name", dest='NAME', type=str, help="VM name ()".format(NAME))
 parser.add_argument("-c", "--cpu", dest='CPU', type=int, help="Number of vCPUS ({})".format(CPU))
-parser.add_argument("-m", "--mem", type=int, help="Memory in GB ({})".format(MEM))
+parser.add_argument("-m", "--mem", type=int, help="Memory in MB ({})".format(MEM))
 parser.add_argument("-v", "--vdisk", dest='HDISK', type=str, help="Size of virt hdisk ({})".format(HDISK))
 parser.add_argument("-i", "--iso", dest='ISO', type=str, help="CDROM ISO Path | None ({})".format(ISO))
 parser.add_argument("-N", "--net", dest='NET', type=str, help="Network Interface | None ({})".format(NET))
@@ -178,7 +178,9 @@ try:
     VMNICS = []
     for line in stdout.readlines():
         splitLine = re.split('[,\n]', line)
-        VMNICS.append(splitLine[0])
+        for nics in splitLine:
+            if nics.strip():
+                VMNICS.append(nics.strip())
 except Exception as e:
     print("The Error is {}".format(e))
     sys.exit(1)
@@ -239,10 +241,10 @@ if CPU < 1 or CPU > 128:
     ErrorMessages += " {} CPU out of range. [1-128].".format(CPU)
     CheckHasErrors = True
 
-#  Check MEM
-if MEM < 1 or MEM > 4080:
-    print("{} GB Memory out of range. [1-4080].".format(MEM))
-    ErrorMessages += " {} GB Memory out of range. [1-4080].".format(MEM)
+#  Check MEM below 16GiB
+if MEM < 256 or MEM > 16384:
+    print("{} MB Memory out of range. [256-16384].".format(MEM))
+    ErrorMessages += " {} MB Memory out of range. [256-16384].".format(MEM)
     CheckHasErrors = True
 
 #  Check HDISK
@@ -300,7 +302,7 @@ vmx = {
     'scsi0.present': 'TRUE',
     'scsi0.sharedBus': 'none',
     'scsi0.virtualDev': 'pvscsi',
-    'memsize': str(MEM * 1024),
+    'memsize': str(MEM),
     'scsi0:0.present': 'TRUE',
     'scsi0:0.fileName': "{}.vmdk".format(NAME),
     'scsi0:0.deviceType': 'scsi-hardDisk',
@@ -436,7 +438,7 @@ if isSummary:
         print("ESXi Port: {}".format(PORT))
     print("VM NAME: {}".format(NAME))
     print("vCPU: {}".format(CPU))
-    print("Memory: {} GB".format(MEM))
+    print("Memory: {} MB".format(MEM))
     print("VM Disk: {} GB".format(HDISK))
     if isVerbose:
         print("Format: {}".format(DISKFORMAT))
