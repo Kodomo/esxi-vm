@@ -56,6 +56,7 @@ def setup_config():
 
         #  Default GuestOS type.  (See VMware documentation for all available options)
         GUESTOS="debian8-64",
+        POOL="ha-root-pool",
 
         # Extra VMX options
         VMXOPTS=""
@@ -93,6 +94,13 @@ def save_config(config_data):
         return 1
     return 0
 
+
+def local_host_name():
+    import socket
+    try:
+        return str(socket.gethostname())
+    except:
+        return 'localhost'
 
 def the_current_date_time():
     i = datetime.datetime.now()

@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 import argparse                   # Argument parser
-
+import os
 from esxi_vm_functions import *
 
 
@@ -26,6 +26,7 @@ VIRTDEV = ConfigData['VIRTDEV']
 STORE = ConfigData['STORE']
 NET = ConfigData['NET']
 ISO = ConfigData['ISO']
+POOL = ConfigData['POOL']
 GUESTOS = ConfigData['GUESTOS']
 VMXOPTS = ConfigData['VMXOPTS']
 
@@ -52,6 +53,7 @@ parser.add_argument("-U", "--User", dest='USER', type=str, help="ESXi Host usern
 parser.add_argument("-P", "--Password", dest='PASSWORD', type=str, help="ESXi Host password (*****)")
 parser.add_argument("-K", "--Key", dest='KEY', type=str, help="ESXi Host path to private key ({})".format(KEY))
 parser.add_argument("-n", "--name", dest='NAME', type=str, help="VM name ()".format(NAME))
+parser.add_argument("-p", "--pool", dest='POOL', type=str, help="Resource Pool for the VM ({})".format(POOL))
 parser.add_argument("-c", "--cpu", dest='CPU', type=int, help="Number of vCPUS ({})".format(CPU))
 parser.add_argument("-m", "--mem", type=int, help="Memory in MB ({})".format(MEM))
 parser.add_argument("-v", "--vdisk", dest='HDISK', type=str, help="Size of virt hdisk ({})".format(HDISK))
@@ -83,6 +85,8 @@ if args.LOG or args.writeLog:
     writeLog = True
 if args.isSummaryarg:
     isSummary = True
+if args.POOL:
+    POOL = args.POOL
 if args.HOST:
     HOST = args.HOST
 if args.PORT:
@@ -136,6 +140,7 @@ if args.UPDATE:
     ConfigData['VIRTDEV'] = VIRTDEV
     ConfigData['STORE'] = STORE
     ConfigData['NET'] = NET
+    ConfigData['POOL'] = POOL
     ConfigData['ISO'] = ISO
     ConfigData['GUESTOS'] = GUESTOS
     ConfigData['VMXOPTS'] = VMXOPTS
@@ -235,6 +240,16 @@ except Exception as e:
     print("The Error is {}".format(e))
     sys.exit(1)
 
+
+try:
+    (stdin, stdout, stderr) = exec_ssh_command("Check for the Reource Pool", "vim-cmd hostsvc/rsrc/pool_config_get {}".format(POOL), ssh, isVerbose)
+    if stdout.readlines() and not stderr.readlines():
+        print("ERROR: Resource Pool '{}' not found.".format(POOL))
+        sys.exit(1)
+except Exception as e:
+    print("The Error is {}".format(e))
+    sys.exit(1)
+
 #  Check CPU
 if CPU < 1 or CPU > 128:
     print("{} CPU out of range. [1-128].".format(CPU))
@@ -293,20 +308,12 @@ except Exception as e:
     pass
 
 vmx = {
+    '.encoding': 'UTF-8'
     'config.version': '8',
-    'virtualHW.version': '8',
-    'vmci0.present': 'TRUE',
-    'displayName': NAME,
-    'floppy0.present': 'FALSE',
-    'numvcpus': CPU,
-    'scsi0.present': 'TRUE',
-    'scsi0.sharedBus': 'none',
-    'scsi0.virtualDev': 'pvscsi',
-    'memsize': str(MEM),
-    'scsi0:0.present': 'TRUE',
-    'scsi0:0.fileName': "{}.vmdk".format(NAME),
-    'scsi0:0.deviceType': 'scsi-hardDisk',
+    'virtualHW.version': '11',
+    'nvram': u'{}.nvram'.format(NAME)
     'pciBridge0.present': 'TRUE',
+    'svga.present': 'TRUE',
     'pciBridge4.present': 'TRUE',
     'pciBridge4.virtualDev': 'pcieRootPort',
     'pciBridge4.functions': '8',
@@ -319,14 +326,38 @@ vmx = {
     'pciBridge7.present': 'TRUE',
     'pciBridge7.virtualDev': 'pcieRootPort',
     'pciBridge7.functions': '8',
+    'vmci0.present': 'TRUE',
+    'hpet0.present': 'TRUE',
+    'numvcpus': CPU,
+    'cpuid.coresPerSocket': CPU,
+    'memsize': str(MEM),
+    'powerType.powerOff': 'default',
+    'powerType.suspend': 'default',
+    'powerType.reset': 'default',
+    'tools.upgrade.policy': 'manual',
+    'scsi0.virtualDev': 'pvscsi',
+    'scsi0.present': 'TRUE',
+    'scsi0:0.present': 'TRUE',
+    'scsi0:0.fileName': "{}.vmdk".format(NAME),
+    'scsi0:0.deviceType': 'scsi-hardDisk',
     'guestOS': GUESTOS
+    'displayName': NAME,
+    'annotation': 'VM created by {} ({}@{}) at {}'.format(USER,os.getlogin(),local_host_name(),the_current_date_time()),
+    'floppy0.present': 'FALSE',
+    'chipset.onlineStandby': 'FALSE',
+    'tools.syncTime': 'FALSE',
+    'toolScripts.afterPowerOn': 'TRUE',
+    'toolScripts.afterResume': 'TRUE',
+    'toolScripts.beforeSuspend': 'TRUE',
+    'toolScripts.beforePowerOff': 'TRUE',
+    
 }
 
 if ISO == "":
     vmx.update({
         'ide1:0.present': 'TRUE',
-        'ide1:0.fileName': 'emptyBackingString',
-        'ide1:0.deviceType': 'atapi-cdrom',
+        'ide1:0.fileName': 'CD/DVD drive 0',
+        'ide1:0.deviceType': 'cdrom-raw',
         'ide1:0.startConnected': 'FALSE',
         'ide1:0.clientDevice': 'TRUE'
     })
@@ -334,7 +365,7 @@ else:
     vmx.update({
         'ide1:0.present': 'TRUE',
         'ide1:0.fileName': ISO,
-        'ide1:0.deviceType': 'atapi-cdrom',
+        'ide1:0.deviceType': 'cdrom-raw',
         'ide1:0.startConnected': 'TRUE',
     })
 
@@ -386,34 +417,22 @@ if not isDryRun and not CheckHasErrors:
                                                    ssh, isVerbose)
 
         (stdin, stdout, stderr) = exec_ssh_command("Register VM",
-                                                   "vim-cmd solo/registervm {}.vmx".format(MyVM), ssh, isVerbose)
+                                                   "vim-cmd solo/registervm {}.vmx {} {}".format(MyVM, NAME, POOL), ssh, isVerbose)
         VMID = int(stdout.readlines()[0])
 
-        (stdin, stdout, stderr) = exec_ssh_command("Power ON VM", "vim-cmd vmsvc/power.on {}".format(VMID),
-                                                   ssh, isVerbose)
-        if stderr.readlines():
-            print("Error Powering-on VM.")
-            Result = "Fail"
-
-        if NET != "None":
-            (stdin, stdout, stderr) = exec_ssh_command("Get MAC address",
-                                                       "grep -i 'ethernet0.*ddress = ' {}.vmx".format(MyVM) +
-                                                       " |tail -1|awk '{print $NF}'", ssh, isVerbose)
-            GeneratedMAC = str(stdout.readlines()[0]).strip('\n"')
 
     except Exception as e:
         print("There was an error creating the VM.")
         ErrorMessages += " There was an error creating the VM."
         Result = "Fail"
 
-LogOutput += '"Host":"{}","Port":"{}","Name":"{}",'.format(HOST, PORT, NAME)
+LogOutput += '"Host":"{}","Port":"{}","Name":"{}","POOL":"{}"'.format(HOST, PORT, NAME, POOL)
 LogOutput += '"CPU":"{}","Mem":"{}",'.format(CPU, MEM)
 LogOutput += '"Hdisk":"{}","DiskFormat":"{}","Virtual Device":"{}",'.format(HDISK, DISKFORMAT, VIRTDEV)
 LogOutput += '"Store":"{}","Store Used":"{}",'.format(STORE, DSPATH)
 LogOutput += '"Network":"{}",'.format(NET)
 LogOutput += '"ISO":"{}","ISO used":"{}",'.format(ISOarg, ISO)
 LogOutput += '"Guest OS":"{}",'.format(GUESTOS)
-LogOutput += '"MAC":"{}","MAC Used":"'.format(MACarg, GeneratedMAC)
 LogOutput += '"Dry Run":"{}","Verbose":"{}",'.format(isDryRun, isVerbose)
 if ErrorMessages != "":
     LogOutput += '"Error Message":"{}",'.format(ErrorMessages)
@@ -436,6 +455,7 @@ if isSummary:
     if isVerbose:
         print("ESXi Host: {}".format(HOST))
         print("ESXi Port: {}".format(PORT))
+    print("RESOURCE POOL: {}".format(POOL))
     print("VM NAME: {}".format(NAME))
     print("vCPU: {}".format(CPU))
     print("Memory: {} MB".format(MEM))
@@ -448,7 +468,7 @@ if isSummary:
         print("ISO: {}".format(ISO))
     if isVerbose:
         print("Guest OS: {}".format(GUESTOS))
-        print("MAC: {}".format(GeneratedMAC))
+
 else:
     pass
 
@@ -459,6 +479,5 @@ if CheckHasErrors:
 else:
     if isDryRun:
         print("Dry Run: Success.")
-    else:
-        print(GeneratedMAC)
+
     sys.exit(0)
