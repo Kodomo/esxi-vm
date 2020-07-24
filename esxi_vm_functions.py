@@ -112,7 +112,9 @@ def exec_ssh_command(message, command, ssh, verbose):
         if message:
             print(message)
         print("SSH: " + command)
-    return ssh.exec_command(command)
+    (stdin, stdout, stderr) = ssh.exec_command(command)
+    del stdin
+    return (stdout, stderr)
 
 
 def get_esxi_version(ssh, verbose):
