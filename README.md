@@ -1,3 +1,24 @@
+TL-DR
+-----
+On a clean VM as root
+
+```
+apt install python3-pip git
+git clone https://github.com/Kodomo/esxi-vm
+pip3 install paramiko pyyaml
+cd esxi-vm
+make install
+```
+
+then, as a normal user you setup your credentials and create a VM
+
+```
+esxi-vm-create -u -H esxi.host.local -U root -P My!Secure#Password
+esxi-vm-create -n TestDebian8VM
+```
+
+the VM is fully compatible with VMWare ESXi 6.0
+
 Introduction
 ------------
 
@@ -13,7 +34,8 @@ Requirements
 * Python **3**, [paramiko](http://www.paramiko.org) and [PyYAML](https://github.com/yaml/pyyaml):
 
 ```
-pip install paramiko pyyaml
+apt install python3-pip
+pip3 install paramiko pyyaml
 ```
 
 Usage
@@ -50,7 +72,7 @@ Command Line Args
 usage: esxi-vm-create [-h] [-d] [-H HOST] [-T PORT] [-U USER] [-P PASSWORD]
                       [-K KEY] [-n NAME] [-c CPU] [-m MEM] [-v HDISK] [-i ISO]
                       [-N NET] [-M MAC] [-S STORE] [-g GUESTOS] [-o VMXOPTS]
-                      [-V] [--summary] [-u]
+                      [-p POOL] [-V] [--summary] [-u]
 
 ESXi Create VM utility.
 
@@ -64,10 +86,11 @@ optional arguments:
                         ESXi Host password (*****)
   -K KEY, --Key KEY     ESXi Host path to private key ()
   -n NAME, --name NAME  VM name ()
+  -p POOL, --pool NAME  Resource pool to attach the VM (ha-root-pool)
   -c CPU, --cpu CPU     Number of vCPUS (2)
-  -m MEM, --mem MEM     Memory in GB (4)
+  -m MEM, --mem MEM     Memory in MB (4096)
   -v HDISK, --vdisk HDISK
-                        Size of virt hdisk (20)
+                        Size of virt hdisk (16)
   -i ISO, --iso ISO     CDROM ISO Path | None (None)
   -N NET, --net NET     Network Interface | None (None)
   -M MAC, --mac MAC     MAC address
@@ -125,6 +148,7 @@ Saving new Defaults to ~/.esxi-vm.yml
 ./esxi-vm-create -n testvm01 --summary
 
 Create VM Success:
+RESOURCE POOL: ha-root-pool
 VM NAME: testvm01
 vCPU: 2
 Memory: 4GB
@@ -136,7 +160,7 @@ Network: None
 * Change default number of vCPUs to `4`, Memory to `8GB` and vDisk size to `40GB`:
 
 ```bash
-./esxi-vm-create -c 4 -m 8 -v 40 -u
+./esxi-vm-create -c 4 -m 8096 -v 40 -u
 Saving new Defaults to ~/.esxi-vm.yml
 ```
 
@@ -169,10 +193,11 @@ Register VM
 Power ON VM
 
 Create VM Success:
+RESOURCE POOL: ha-root-pool
 ESXi Host: esxi
 VM NAME: testvm03
 vCPU: 4
-Memory: 8GB
+Memory: 8096MB
 VM Disk: 40GB
 Format: thin
 DS Store: DS_3TB_m
@@ -196,7 +221,7 @@ Create VM Success:
 ESXi Host: esxi
 VM NAME: testvm04
 vCPU: 4
-Memory: 8GB
+Memory: 8096MB
 VM Disk: 40GB
 Format: thin
 DS Store: DS_3TB_m
@@ -258,12 +283,17 @@ This is a fork. Summary of changes in this fork:
 * `esxi-vm-destroy` is documented
 * Move some common code in `esxi-vm-create` and `esxi-vm-destroy` to `esxi_vm_functions.py`
 * Code cleaning (work in progress)
+* VM Memory in MB **not GB** to be able to create low memory VM
+* Default VM is now Debian 8-64bits
+* Fixed a bug that didn't obtain the list of VMNIC from the esxi instance properly
+* Upgraded virtualHW.version 11 (native ESXI 6.0 format)
+* Added parameters `--pool` to attach the VM to a resource pool
 
 Copyrights
 ----------
-
-* **This fork** Copyright &copy; 2018 Sebastien Andrivet
-* **[Oiginal code](https://github.com/josenk/esxi-vm-create)** Copyright &copy; 2017 Jonathan Senkerik
+* **This fork** Copyright &copy; 2020 Israel Figueroa
+* **[fork](https://github.com/andrivet/esxi-vm)** Copyright &copy; 2018 Sebastien Andrivet
+* **[Original code](https://github.com/josenk/esxi-vm-create)** Copyright &copy; 2017 Jonathan Senkerik
 
 License
 -------
