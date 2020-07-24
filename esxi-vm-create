@@ -308,10 +308,10 @@ except Exception as e:
     pass
 
 vmx = {
-    '.encoding': 'UTF-8'
+    '.encoding': 'UTF-8',
     'config.version': '8',
     'virtualHW.version': '11',
-    'nvram': u'{}.nvram'.format(NAME)
+    'nvram': u'{}.nvram'.format(NAME),
     'pciBridge0.present': 'TRUE',
     'svga.present': 'TRUE',
     'pciBridge4.present': 'TRUE',
@@ -340,7 +340,7 @@ vmx = {
     'scsi0:0.present': 'TRUE',
     'scsi0:0.fileName': "{}.vmdk".format(NAME),
     'scsi0:0.deviceType': 'scsi-hardDisk',
-    'guestOS': GUESTOS
+    'guestOS': GUESTOS,
     'displayName': NAME,
     'annotation': 'VM created by {} ({}@{}) at {}'.format(USER,os.getlogin(),local_host_name(),the_current_date_time()),
     'floppy0.present': 'FALSE',
