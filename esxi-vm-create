@@ -243,7 +243,7 @@ except Exception as e:
 
 try:
     (stdout, stderr) = exec_ssh_command("Check for the Resource Pool", "vim-cmd hostsvc/rsrc/pool_config_get {}".format(POOL), ssh, isVerbose)
-    if stderr.readlines():
+    if not stdout.readlines():
         print("ERROR: Resource Pool '{}' not found.".format(POOL))
         sys.exit(1)
 except Exception as e:

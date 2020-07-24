@@ -119,7 +119,7 @@ def exec_ssh_command(message, command, ssh, verbose):
 
 def get_esxi_version(ssh, verbose):
     try:
-        (stdin, stdout, stderr) = exec_ssh_command("Get ESXi version", "esxcli system version get |grep Version",
+        (stdout, stderr) = exec_ssh_command("Get ESXi version", "esxcli system version get |grep Version",
                                                    ssh, verbose)
         if re.match("Version", str(stdout.readlines())) is not None:
             print("Unable to determine if this is a ESXi Host")
